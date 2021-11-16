@@ -11,23 +11,23 @@
 ### Model/Schema/
 ## Movies
 
-title: String,
-director: String,
-year: Number,
-genre: String,
-image: String,
-rating: Number,
-link: String,
-video: String
+title: String,  
+director: String,  
+year: Number,  
+genre: String,  
+image: String,  
+rating: Number,  
+link: String,  
+video: String  
 
 ## Books
 
-title: String,
-author: String,
-year: Number,
-genre: String,
-image: String,
-link: String
+title: String,  
+author: String,  
+year: Number,  
+genre: String,  
+image: String,  
+link: String  
 
 ### Route Table
 ## Movies
