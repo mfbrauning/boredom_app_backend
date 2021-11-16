@@ -37,7 +37,7 @@ const movieSchema = new mongoose.Schema(
     year: Number,
     genre: String,
     image: String,
-    rating: Number,
+    rating: String,
     link: String,
     video: String,
   },
