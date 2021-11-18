@@ -49,6 +49,7 @@ const User = mongoose.model("user", userSchema)
 
 const movieSchema = new mongoose.Schema(
   {
+    username: {type: String, required: true},
     title: String,
     director: String,
     year: Number,
@@ -65,6 +66,7 @@ const Movie = mongoose.model("Movie", movieSchema);
 
 const bookSchema = new mongoose.Schema(
   {
+    username: {type: String, required: true},
     title: String,
     author: String,
     year: Number,
@@ -78,14 +80,15 @@ const bookSchema = new mongoose.Schema(
 const Book = mongoose.model("Book", bookSchema);
 
 
-// router
-app.get("/", auth, (req, res) => {
-    res.json(req.payload)
-})
 
 //////////////////////////////
 // User Routes
 //////////////////////////////
+app.get("/", auth, (req, res) => {
+  res.json(req.payload)
+})
+
+
 app.post("/signup", async (req, res) => {
     try {
         req.body.password = await bcrypt.hash(req.body.password, 10)
@@ -127,17 +130,20 @@ app.get("/", (req, res) => {
 });
 
 // Index Route
-app.get("/movies", async (req, res) => {
+app.get("/movies", auth, async (req, res) => {
   try {
-    res.json(await Movie.find({}));
+    const {username} = req.payload
+    res.json(await Movie.find({username}));
   } catch (error) {
     res.status(400).json(error);
   }
 });
 
 // Create Route
-app.post("/movies", async (req, res) => {
+app.post("/movies", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(await Movie.create(req.body));
   } catch (error) {
     res.status(400).json(error);
@@ -145,8 +151,10 @@ app.post("/movies", async (req, res) => {
 });
 
 // Update Route
-app.put("/movies/:id", async (req, res) => {
+app.put("/movies/:id", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(
       await Movie.findByIdAndUpdate(req.params.id, req.body, { new: true })
     );
@@ -156,7 +164,7 @@ app.put("/movies/:id", async (req, res) => {
 });
 
 // Delete Route
-app.delete("/movies/:id", async (req, res) => {
+app.delete("/movies/:id", auth, async (req, res) => {
   try {
     res.json(await Movie.findByIdAndDelete(req.params.id));
   } catch (error) {
@@ -169,17 +177,20 @@ app.delete("/movies/:id", async (req, res) => {
 ////////////////////////
 
 // Index Route
-app.get("/books", async (req, res) => {
+app.get("/books", auth, async (req, res) => {
   try {
-    res.json(await Book.find({}));
+    const {username} = req.payload
+    res.json(await Book.find({username}));
   } catch (error) {
     res.status(400).json(error);
   }
 });
 
 // Create Route
-app.post("/books", async (req, res) => {
+app.post("/books", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(await Book.create(req.body));
   } catch (error) {
     res.status(400).json(error);
@@ -187,8 +198,10 @@ app.post("/books", async (req, res) => {
 });
 
 // Update Route
-app.put("/books/:id", async (req, res) => {
+app.put("/books/:id", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(
       await Book.findByIdAndUpdate(req.params.id, req.body, { new: true })
     );
@@ -198,7 +211,7 @@ app.put("/books/:id", async (req, res) => {
 });
 
 // Delete Route
-app.delete("/books/:id", async (req, res) => {
+app.delete("/books/:id", auth, async (req, res) => {
   try {
     res.json(await Book.findByIdAndDelete(req.params.id));
   } catch (error) {
