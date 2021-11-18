@@ -2,12 +2,16 @@
 // DEPENDENCIES
 //////////////////////////////
 require("dotenv").config();
-const { PORT = 3000, DATABASE_URL } = process.env;
+const { PORT = 3000, DATABASE_URL, SECRET} = process.env;
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
 const morgan = require("morgan");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken")
+const auth = require("./auth")
+
 
 //////////////////////////////
 // MIDDLEWARE
@@ -15,6 +19,7 @@ const morgan = require("morgan");
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cors());
+
 
 //////////////////////////////
 // DATABASE CONNECTION
@@ -30,6 +35,18 @@ mongoose.connection
 /////////////////////
 // Model
 /////////////////////
+// user model
+const userSchema = new mongoose.Schema(
+    {
+        username: {type: String, required: true, unique: true},
+        password: {type: String, required: true}
+    }, {timestamps: true}
+)
+
+const User = mongoose.model("user", userSchema)
+
+
+
 const movieSchema = new mongoose.Schema(
   {
     title: String,
@@ -59,6 +76,47 @@ const bookSchema = new mongoose.Schema(
 );
 
 const Book = mongoose.model("Book", bookSchema);
+
+
+// router
+app.get("/", auth, (req, res) => {
+    res.json(req.payload)
+})
+
+//////////////////////////////
+// User Routes
+//////////////////////////////
+app.post("/signup", async (req, res) => {
+    try {
+        req.body.password = await bcrypt.hash(req.body.password, 10)
+        const newUser = await User.create(req.body)
+        res.json(newUser)
+    } catch(error) {
+        res.status(400).json(error)
+    }
+})
+
+app.post("/login", async (req, res) => {
+    try {
+        const {username, password} = req.body
+        const user = await User.findOne({username})
+        if (user){
+            const match = await bcrypt.compare(password, user.password)
+            if(match){
+                const token = await jwt.sign({username}, SECRET)
+                res.json({token})
+            } else {
+                res.status(400).json({error: "password does not match"})
+            }
+        } else {
+            res.status(400).json({error: "user does not exist"})
+        }
+    } catch (error) {
+        res.status(400).json(error)
+    }
+})
+
+
 
 //////////////////////////////
 // Movie Routes
