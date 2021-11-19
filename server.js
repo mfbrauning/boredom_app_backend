@@ -2,12 +2,16 @@
 // DEPENDENCIES
 //////////////////////////////
 require("dotenv").config();
-const { PORT = 3000, DATABASE_URL } = process.env;
+const { PORT = 3000, DATABASE_URL, SECRET} = process.env;
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
 const morgan = require("morgan");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken")
+const auth = require("./auth")
+
 
 //////////////////////////////
 // MIDDLEWARE
@@ -15,6 +19,7 @@ const morgan = require("morgan");
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cors());
+
 
 //////////////////////////////
 // DATABASE CONNECTION
@@ -30,8 +35,21 @@ mongoose.connection
 /////////////////////
 // Model
 /////////////////////
+// user model
+const userSchema = new mongoose.Schema(
+    {
+        username: {type: String, required: true, unique: true},
+        password: {type: String, required: true}
+    }, {timestamps: true}
+)
+
+const User = mongoose.model("user", userSchema)
+
+
+
 const movieSchema = new mongoose.Schema(
   {
+    username: {type: String, required: true},
     title: String,
     director: String,
     year: Number,
@@ -48,6 +66,7 @@ const Movie = mongoose.model("Movie", movieSchema);
 
 const bookSchema = new mongoose.Schema(
   {
+    username: {type: String, required: true},
     title: String,
     author: String,
     year: Number,
@@ -60,6 +79,48 @@ const bookSchema = new mongoose.Schema(
 
 const Book = mongoose.model("Book", bookSchema);
 
+
+
+//////////////////////////////
+// User Routes
+//////////////////////////////
+app.get("/", auth, (req, res) => {
+  res.json(req.payload)
+})
+
+
+app.post("/signup", async (req, res) => {
+    try {
+        req.body.password = await bcrypt.hash(req.body.password, 10)
+        const newUser = await User.create(req.body)
+        res.json(newUser)
+    } catch(error) {
+        res.status(400).json(error)
+    }
+})
+
+app.post("/login", async (req, res) => {
+    try {
+        const {username, password} = req.body
+        const user = await User.findOne({username})
+        if (user){
+            const match = await bcrypt.compare(password, user.password)
+            if(match){
+                const token = await jwt.sign({username}, SECRET)
+                res.json({token})
+            } else {
+                res.status(400).json({error: "password does not match"})
+            }
+        } else {
+            res.status(400).json({error: "user does not exist"})
+        }
+    } catch (error) {
+        res.status(400).json(error)
+    }
+})
+
+
+
 //////////////////////////////
 // Movie Routes
 //////////////////////////////
@@ -69,17 +130,20 @@ app.get("/", (req, res) => {
 });
 
 // Index Route
-app.get("/movies", async (req, res) => {
+app.get("/movies", auth, async (req, res) => {
   try {
-    res.json(await Movie.find({}));
+    const {username} = req.payload
+    res.json(await Movie.find({username}));
   } catch (error) {
     res.status(400).json(error);
   }
 });
 
 // Create Route
-app.post("/movies", async (req, res) => {
+app.post("/movies", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(await Movie.create(req.body));
   } catch (error) {
     res.status(400).json(error);
@@ -87,8 +151,10 @@ app.post("/movies", async (req, res) => {
 });
 
 // Update Route
-app.put("/movies/:id", async (req, res) => {
+app.put("/movies/:id", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(
       await Movie.findByIdAndUpdate(req.params.id, req.body, { new: true })
     );
@@ -98,7 +164,7 @@ app.put("/movies/:id", async (req, res) => {
 });
 
 // Delete Route
-app.delete("/movies/:id", async (req, res) => {
+app.delete("/movies/:id", auth, async (req, res) => {
   try {
     res.json(await Movie.findByIdAndDelete(req.params.id));
   } catch (error) {
@@ -111,17 +177,20 @@ app.delete("/movies/:id", async (req, res) => {
 ////////////////////////
 
 // Index Route
-app.get("/books", async (req, res) => {
+app.get("/books", auth, async (req, res) => {
   try {
-    res.json(await Book.find({}));
+    const {username} = req.payload
+    res.json(await Book.find({username}));
   } catch (error) {
     res.status(400).json(error);
   }
 });
 
 // Create Route
-app.post("/books", async (req, res) => {
+app.post("/books", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(await Book.create(req.body));
   } catch (error) {
     res.status(400).json(error);
@@ -129,8 +198,10 @@ app.post("/books", async (req, res) => {
 });
 
 // Update Route
-app.put("/books/:id", async (req, res) => {
+app.put("/books/:id", auth, async (req, res) => {
   try {
+    const {username} = req.payload
+    req.body.username = username
     res.json(
       await Book.findByIdAndUpdate(req.params.id, req.body, { new: true })
     );
@@ -140,7 +211,7 @@ app.put("/books/:id", async (req, res) => {
 });
 
 // Delete Route
-app.delete("/books/:id", async (req, res) => {
+app.delete("/books/:id", auth, async (req, res) => {
   try {
     res.json(await Book.findByIdAndDelete(req.params.id));
   } catch (error) {
